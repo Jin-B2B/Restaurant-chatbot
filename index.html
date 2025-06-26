@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>지역 맛집 추천 챗봇</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <style>
+    body { font-family: 'Arial', sans-serif; background: #f9f9f9; padding: 20px; }
+    #botui-app { max-width: 500px; margin: 0 auto; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+  <div id="botui-app"></div>
+
+  <script>
+    const botui = new BotUI('botui-app');
+
+    const KAKAO_API_KEY = 'YOUR_KAKAO_REST_API_KEY'; // 여기에 본인의 Kakao REST API 키 입력
+
+    function getNearbyRestaurants(lat, lon) {
+      return fetch(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lon}&y=${lat}&radius=500&sort=distance`, {
+        headers: {
+          Authorization: `KakaoAK ${KAKAO_API_KEY}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => data.documents);
+    }
+
+    botui.message.add({
+      content: '안녕하세요! 현재 위치를 기반으로 주변 맛집을 추천해드릴게요 🍜'
+    }).then(() => {
+      return botui.message.add({
+        content: '위치 권한을 허용해주세요...'
+      });
+    }).then(() => {
+      navigator.geolocation.getCurrentPosition(async function(pos) {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        botui.message.add({
+          content: `📍 현재 위치를 확인했어요. 주변 중식당을 찾고 있습니다...`
+        });
+
+        const results = await getNearbyRestaurants(lat, lon);
+        if (results.length === 0) {
+          botui.message.add({ content: '근처에 중식당 정보가 없어요 😥' });
+        } else {
+          let list = results.slice(0, 5).map((r, i) => `${i+1}. ${r.place_name} (${r.phone || '전화번호 없음'})`).join('<br>');
+          botui.message.add({ content: list });
+        }
+      }, function(err) {
+        botui.message.add({ content: '위치 정보를 가져오지 못했습니다. 입력 검색 기능으로 전환할게요.' });
+      });
+    });
+  </script>
+</body>
+</html>
