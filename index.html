@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>지역 맛집 추천 챗봇</title>
+  <title>위치기반 음식점 추천 챗봇</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
   <style>
-    body { font-family: 'Arial', sans-serif; background: #f9f9f9; padding: 20px; }
-    #botui-app { max-width: 500px; margin: 0 auto; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    body { font-family: 'Arial', sans-serif; background-color: #f0f0f0; padding: 20px; }
+    #botui-app { max-width: 600px; margin: 50px auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 20px; }
   </style>
 </head>
 <body>
@@ -17,43 +17,45 @@
 
   <script>
     const botui = new BotUI('botui-app');
+    const KAKAO_API_KEY = 'YOUR_KAKAO_REST_API_KEY'; // 여기에 Kakao REST API 키 입력
 
-    const KAKAO_API_KEY = 'YOUR_KAKAO_REST_API_KEY'; // 여기에 본인의 Kakao REST API 키 입력
-
-    function getNearbyRestaurants(lat, lon) {
-      return fetch(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lon}&y=${lat}&radius=500&sort=distance`, {
-        headers: {
-          Authorization: `KakaoAK ${KAKAO_API_KEY}`
-        }
-      })
-      .then(res => res.json())
-      .then(data => data.documents);
+    async function fetchRestaurants(lat, lon) {
+      const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lon}&y=${lat}&radius=500&sort=distance`;
+      const res = await fetch(url, {
+        headers: { Authorization: `KakaoAK ${KAKAO_API_KEY}` }
+      });
+      const data = await res.json();
+      return data.documents;
     }
 
     botui.message.add({
-      content: '안녕하세요! 현재 위치를 기반으로 주변 맛집을 추천해드릴게요 🍜'
+      content: '안녕하세요! 현재 위치를 기반으로 근처 음식점을 찾아드릴게요 😊'
     }).then(() => {
       return botui.message.add({
-        content: '위치 권한을 허용해주세요...'
+        content: '위치 권한을 요청합니다...'
       });
     }).then(() => {
-      navigator.geolocation.getCurrentPosition(async function(pos) {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
 
-        botui.message.add({
-          content: `📍 현재 위치를 확인했어요. 주변 중식당을 찾고 있습니다...`
+        botui.message.add({ content: '📍 위치 확인 완료! 주변 음식점을 검색 중입니다...' });
+        const restaurants = await fetchRestaurants(lat, lon);
+
+        if (restaurants.length === 0) {
+          botui.message.add({ content: '주변에 음식점 정보를 찾지 못했습니다 😥' });
+          return;
+        }
+
+        let message = '✅ 근처 음식점 리스트 (500m 이내):<br>';
+        restaurants.slice(0, 5).forEach((r, i) => {
+          message += `${i + 1}. ${r.place_name} (${r.phone || '전화번호 없음'})<br>`;
         });
 
-        const results = await getNearbyRestaurants(lat, lon);
-        if (results.length === 0) {
-          botui.message.add({ content: '근처에 중식당 정보가 없어요 😥' });
-        } else {
-          let list = results.slice(0, 5).map((r, i) => `${i+1}. ${r.place_name} (${r.phone || '전화번호 없음'})`).join('<br>');
-          botui.message.add({ content: list });
-        }
-      }, function(err) {
-        botui.message.add({ content: '위치 정보를 가져오지 못했습니다. 입력 검색 기능으로 전환할게요.' });
+        botui.message.add({ content: message });
+
+      }, (error) => {
+        botui.message.add({ content: '위치 정보를 가져올 수 없습니다. 위치 권한을 허용해주세요.' });
       });
     });
   </script>
