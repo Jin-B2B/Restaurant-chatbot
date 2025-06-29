@@ -18,7 +18,7 @@
   <script>
   document.addEventListener('DOMContentLoaded', () => {
     const botui = new BotUI('botui-app');
-    const KAKAO_API_KEY = 'e154dc87deff00258f900292d2af45dd';
+    const KAKAO_API_KEY = '';
 
     async function fetchRestaurants(lat, lon) {
       const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lon}&y=${lat}&radius=500&sort=distance`;
